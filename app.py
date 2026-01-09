@@ -5,14 +5,17 @@ import joblib
 import shap
 import google.generativeai as genai
 import plotly.graph_objects as go
+import requests
+from streamlit_lottie import st_lottie
+from datetime import datetime, date
 
 # --- CONFIGURATION ---
-st.set_page_config(page_title="High Sc. AI Portal", layout="wide", page_icon="🎓")
+st.set_page_config(page_title="Uni. AI Portal", layout="wide", page_icon="🎓")
 
 # Configure Gemini API
 # IMPORTANT: Replace with your actual key or use st.secrets
 try:
-    genai.configure(api_key="YOUR_API_KEY_HERE") 
+    genai.configure(api_key="AIzaSyD9CWbyNDyiy1HVdyJWwH4doF3n3SfTtJI") 
 except Exception as e:
     st.error(f"API Configuration Error: {e}")
 
@@ -24,7 +27,13 @@ except:
     st.error("⚠️ System Offline: Model files missing. Initialize training sequence.")
     st.stop()
 
-# --- HUMAN READABLE MAPPING (THE FIX) ---
+# --- HELPER: LOAD LOTTIE ANIMATION ---
+def load_lottieurl(url: str):
+    r = requests.get(url)
+    if r.status_code != 200: return None
+    return r.json()
+
+# --- HUMAN READABLE MAPPING ---
 FEATURE_MAP = {
     "G1": "Internal Exam 1",
     "G2": "Internal Exam 2",
@@ -43,127 +52,23 @@ FEATURE_MAP = {
 # --- CSS: MODERN DARK MODE THEME ---
 st.markdown("""
 <style>
-    /* Import Inter Font */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-    /* --- GLOBAL DARK THEME --- */
-    .stApp {
-        background-color: #0f172a !important; /* Deep Slate Background */
-        color: #f8fafc !important; /* Light Text */
-        font-family: 'Inter', sans-serif;
-    }
-    
-    /* Headers */
-    h1, h2, h3, h4, h5, h6 {
-        color: #f1f5f9 !important;
-        font-weight: 700;
-    }
-    
-    /* Text Paragraphs & Labels */
-    p, label, span, div {
-        color: #e2e8f0;
-    }
-
-    /* --- SIDEBAR --- */
-    section[data-testid="stSidebar"] {
-        background-color: #1e293b !important; /* Lighter Slate */
-        border-right: 1px solid #334155;
-    }
-    
-    /* --- INPUT FIELDS --- */
-    div[data-testid="stInputLabel"] {
-        color: #94a3b8 !important; /* Muted Grey */
-        font-size: 13px;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 600;
-    }
-    
-    div[data-baseweb="input"], div[data-baseweb="select"] > div {
-        background-color: #020617 !important; /* Very Dark */
-        border: 1px solid #334155 !important;
-        border-radius: 8px !important;
-        color: white !important;
-    }
-    
+    .stApp { background-color: #0f172a !important; color: #f8fafc !important; font-family: 'Inter', sans-serif; }
+    h1, h2, h3, h4, h5, h6 { color: #f1f5f9 !important; font-weight: 700; }
+    p, label, span, div { color: #e2e8f0; }
+    section[data-testid="stSidebar"] { background-color: #1e293b !important; border-right: 1px solid #334155; }
+    div[data-testid="stInputLabel"] { color: #94a3b8 !important; font-size: 13px; text-transform: uppercase; font-weight: 600; }
+    div[data-baseweb="input"], div[data-baseweb="select"] > div, div[data-baseweb="base-input"] { background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 8px !important; color: white !important; }
     input[class*="st-"] { color: white !important; }
-    
-    button[kind="secondary"] {
-        background-color: #1e293b !important;
-        color: white !important;
-        border: 1px solid #334155 !important;
-    }
-
-    /* --- METRIC CARDS --- */
-    .metric-card {
-        background-color: #1e293b;
-        padding: 20px;
-        border-radius: 12px;
-        border: 1px solid #334155;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-    }
-    .metric-value {
-        font-size: 28px !important;
-        font-weight: 700 !important;
-        color: #818cf8 !important; /* Indigo Accent */
-    }
-    .metric-label {
-        font-size: 14px !important;
-        color: #94a3b8 !important;
-    }
-
-    /* --- PREDICTION BOXES --- */
-    .pred-box {
-        background: #1e293b;
-        padding: 25px;
-        border-radius: 16px;
-        text-align: center;
-        border: 1px solid #334155;
-        margin-bottom: 20px;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-    }
+    button[kind="secondary"] { background-color: #1e293b !important; color: white !important; border: 1px solid #334155 !important; }
+    .metric-card { background-color: #1e293b; padding: 20px; border-radius: 12px; border: 1px solid #334155; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); }
+    .metric-value { font-size: 28px !important; font-weight: 700 !important; color: #818cf8 !important; }
+    .metric-label { font-size: 14px !important; color: #94a3b8 !important; }
+    .pred-box { background: #1e293b; padding: 25px; border-radius: 16px; text-align: center; border: 1px solid #334155; margin-bottom: 20px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
     .pred-good { color: #34d399 !important; text-shadow: 0 0 10px rgba(52, 211, 153, 0.2); } 
     .pred-bad { color: #f87171 !important; text-shadow: 0 0 10px rgba(248, 113, 113, 0.2); } 
-
-    /* --- BUTTONS --- */
-    .stButton > button {
-        background: linear-gradient(to right, #6366f1, #8b5cf6) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 8px;
-        padding: 10px 24px;
-        font-weight: 600;
-        transition: transform 0.2s;
-    }
-    .stButton > button:hover {
-        transform: scale(1.02);
-        box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
-    }
-
-    /* --- TABS --- */
-    .stTabs [data-baseweb="tab-list"] {
-        background-color: #1e293b;
-        padding: 8px;
-        border-radius: 10px;
-        gap: 8px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        color: #94a3b8;
-        border-radius: 6px;
-        padding: 12px 30px !important; /* Increased Padding */
-        font-size: 15px;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #334155 !important;
-        color: white !important;
-    }
-    
-    /* --- DATAFRAME --- */
-    div[data-testid="stDataFrame"] {
-        background-color: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 8px;
-    }
+    .stButton > button { background: linear-gradient(to right, #6366f1, #8b5cf6) !important; color: white !important; border: none !important; border-radius: 8px; padding: 10px 24px; font-weight: 600; transition: transform 0.2s; }
+    .stButton > button:hover { transform: scale(1.02); box-shadow: 0 0 15px rgba(99, 102, 241, 0.4); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -229,16 +134,14 @@ def verify_student(usn, dob):
     conn.close()
     return df.iloc[0] if not df.empty else None
 
-# --- UPDATED PREDICTION FUNCTION (With Logic Fixes) ---
+# --- PREDICTION LOGIC ---
 def run_prediction(student_row):
-    # Mapping Logic
     input_data = {
         'G1': student_row['internal1'], 'G2': student_row['internal2'],
         'failures': student_row['failures'], 'absences': student_row['absences'],
         'studytime': student_row['study_time'], 'health': student_row['health'],
         'famrel': student_row['famrel'], 'goout': student_row['goout'],
         'freetime': student_row['freetime'],
-        # Defaults
         'age': 21, 'Medu': 3, 'Fedu': 3, 'traveltime': 1, 'romantic': 0, 'internet': 1,
         'schoolsup': 0, 'famsup': 1, 'paid': 0, 'activities': 1, 'nursery': 1,
         'higher': 1, 'famsize': 0, 'Pstatus': 1, 'sex': 1, 'school': 0, 'address': 1,
@@ -248,87 +151,77 @@ def run_prediction(student_row):
     for c in set(feature_names) - set(input_df.columns): input_df[c] = 0
     input_df = input_df[feature_names]
     
-    # 1. Base Prediction
     pred = model.predict(input_df)[0]
     
-    # 2. LOGIC OVERRIDES (The "Common Sense" Layer)
+    # Logic Overrides
     current_absences = input_data['absences']
-    
     if current_absences > 15:
-        # Penalty for extreme absences
         penalty = (current_absences - 15) * 0.3  
         pred = pred - penalty
-        
-    elif current_absences < 2:
-        # BOOST for Perfect/Near-Perfect Attendance
-        # This fixes the issue where 0 absences gave a lower score than 2.
-        pred = pred + 2.0 
+    elif current_absences == 0:
+        pred = pred + 3.0
+    elif current_absences <= 3:
+        pred = pred + 1.5 
         
     pred = max(0, min(20, pred))
     
-    # 3. Explanation Generation
     shap_values = shap.TreeExplainer(model).shap_values(input_df)
-    
-    importances = []
-    for i, feature in enumerate(feature_names):
-        importances.append({
-            'feature': feature,
-            'importance': shap_values[0][i],
-            'value': input_df.iloc[0][i]
-        })
-    
-    importances = sorted(importances, key=lambda x: abs(x['importance']), reverse=True)
+    importances = sorted([{
+        'feature': feature,
+        'importance': shap_values[0][i],
+        'value': input_df.iloc[0][i]
+    } for i, feature in enumerate(feature_names)], key=lambda x: abs(x['importance']), reverse=True)
     
     factors = []
     for item in importances[:3]: 
         feat = item['feature']
         imp = item['importance']
         val = item['value']
-        
-        # Filter: If model complains about low absences, ignore it
-        if feat == 'absences' and imp < 0 and val < 5:
-            continue 
-            
+        if feat == 'absences' and imp < 0 and val < 5: continue 
         direction = "Positive" if imp > 0 else "Negative"
         readable_name = FEATURE_MAP.get(feat, feat)
         factors.append(f"{readable_name} ({direction})")
     
-    if current_absences > 15:
-        factors.insert(0, "Extreme Class Absences (Negative)")
-    
+    if current_absences > 15: factors.insert(0, "Extreme Class Absences (Negative)")
     return pred, ", ".join(factors)
 
 def generate_report(name, score, factors):
-    # Prompt explicitly hides Age from the text report
-    prompt = f"Student: {name}. Predicted Grade: {score:.2f}/20. Key Factors: {factors}. Do not mention age for this. Write a professional academic summary in 3 bullet points."
-    try:
-        return genai.GenerativeModel('gemini-2.5-flash').generate_content(prompt).text
-    except:
-        return "AI Service Unavailable."
-
-def generate_timetable(student_data):
+    # Convert to Indian metrics
+    pct = (score / 20) * 100
+    cgpa = score / 2
+    
+    # STRICTER PROMPT
     prompt = f"""
-    Create a detailed 3-day study table (Markdown) for:
-    - Internal 1 ({student_data['internal1']}), Internal 2 ({student_data['internal2']}).
-    - Study Level {student_data['study_time']}/4.
+    Act as a senior academic counselor at an Indian University.
+    
+    Student: {name}
+    Predicted Score: {pct:.1f}% ({cgpa:.1f} CGPA)
+    Influencing Factors: {factors}
+    
+    Task: Write a concise performance review.
+    
+    RULES:
+    1. DIRECTNESS: Start immediately with the status (e.g., "Aswin is currently At Risk..."). Remove introductions like "This summary outlines...".
+    2. CONTENT: specific advice based on the factors provided.
+    3. FORBIDDEN: Do NOT mention "Age" or "demographics" as a factor. Ignore it if present.
+    4. FORMAT: 
+       - 1 Sentence Summary of current status.
+       - 3 Bullet points for improvement (Actionable & Strict).
     """
     try:
         return genai.GenerativeModel('gemini-2.5-flash').generate_content(prompt).text
     except:
         return "AI Service Unavailable."
+        
+def generate_timetable(student_data):
+    prompt = f"Create a detailed 3-day study table (Markdown) for Internal 1 ({student_data['internal1']}), Internal 2 ({student_data['internal2']}). Study Level {student_data['study_time']}/4."
+    try: return genai.GenerativeModel('gemini-2.5-flash').generate_content(prompt).text
+    except: return "AI Service Unavailable."
 
-# --- SESSION STATE INITIALIZATION (FULL RETENTION) ---
-if 'user_role' not in st.session_state:
-    st.session_state['user_role'] = None
-    st.session_state['user_data'] = None
-
-# Store PREDICTION results
-if 'pred_result' not in st.session_state:
-    st.session_state['pred_result'] = None
-
-# Store STUDY PLAN results
-if 'study_plan' not in st.session_state:
-    st.session_state['study_plan'] = None
+# --- SESSION STATE ---
+if 'user_role' not in st.session_state: st.session_state['user_role'] = None; st.session_state['user_data'] = None
+if 'pred_result' not in st.session_state: st.session_state['pred_result'] = None
+if 'study_plan' not in st.session_state: st.session_state['study_plan'] = None
 
 # ==========================================
 # 1. LOGIN SCREEN
@@ -341,15 +234,22 @@ if st.session_state['user_role'] is None:
         st.markdown("<p style='color:#94a3b8; margin-bottom: 20px;'>Secure Academic Management System</p>", unsafe_allow_html=True)
         
         with st.container(border=True):
-            usn = st.text_input("Student ID (USN)", placeholder="1RV23MCA003")
-            dob = st.text_input("Password (DOB)", type="password", placeholder="YYYY-MM-DD")
+            usn = st.text_input("Student ID (USN)", placeholder="1MS24MC001")
+            
+            # --- DATE PICKER UI (For Password) ---
+            dob_input = st.date_input("Date of Birth", min_value=date(1990, 1, 1), max_value=date.today())
+            # Convert date object back to string YYYY-MM-DD for checking
+            dob_str = dob_input.strftime('%Y-%m-%d')
             
             if st.button("Sign In", type="primary", use_container_width=True):
-                if usn == "ADMIN" and dob == "admin123":
+                # Admin Bypass
+                if usn == "ADMIN" and dob_str == "2026-01-01": # Changed admin pass to a date for UI consistency
                     st.session_state['user_role'] = "ADMIN"
                     st.rerun()
+                elif usn == "ADMIN": 
+                    st.error("For Admin: Use Date 2026-01-01") # Hint for you
                 else:
-                    user = verify_student(usn, dob)
+                    user = verify_student(usn, dob_str)
                     if user is not None:
                         st.session_state['user_role'] = "STUDENT"
                         st.session_state['user_data'] = user
@@ -361,30 +261,36 @@ if st.session_state['user_role'] is None:
 # 2. ADMIN DASHBOARD
 # ==========================================
 elif st.session_state['user_role'] == "ADMIN":
+    def logout():
+        st.session_state.clear() # Wipes all data (Role, Student Data, Prediction, Study Plan)
+        st.rerun()
+        
     with st.sidebar:
         st.markdown("### Admin Console")
         st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=80)
         st.markdown("---")
-        st.button("Logout", on_click=lambda: st.session_state.update({'user_role': None}))
+        st.button("Logout", on_click=logout)
     
     st.title("Admin Dashboard")
-    tab1, tab2 = st.tabs(["Add Student", "Database & Management"])
+    tab1, tab2 = st.tabs(["Add Student", "Database & Analytics"])
     
-    # --- TAB 1: ADD STUDENT ---
     with tab1:
         with st.container(border=True):
             st.subheader("Student Enrollment")
             with st.form("reg_form"):
                 c1, c2 = st.columns(2)
                 with c1:
-                    st.markdown("**Academic Info**")
+                    st.markdown("**Academic Info (Enter Percentage 0-100)**")
                     new_usn = st.text_input("USN")
                     new_name = st.text_input("Name")
-                    new_dob = st.text_input("DOB")
+                    
+                    # --- DATE PICKER UI ---
+                    new_dob_date = st.date_input("Date of Birth", value=date(2002, 1, 1))
+                    
                     new_sem = st.number_input("Semester", 1, 8, 4)
                     col_g1, col_g2 = st.columns(2)
-                    with col_g1: new_g1 = st.number_input("Internal 1", 0, 20)
-                    with col_g2: new_g2 = st.number_input("Internal 2", 0, 20)
+                    with col_g1: raw_g1 = st.number_input("Internal 1 (%)", 0, 100)
+                    with col_g2: raw_g2 = st.number_input("Internal 2 (%)", 0, 100)
                 
                 with c2:
                     st.markdown("**Proctorial Info**")
@@ -398,22 +304,41 @@ elif st.session_state['user_role'] == "ADMIN":
                 
                 st.markdown("---")
                 if st.form_submit_button("Save Record", type="primary"):
-                     data = {'usn': new_usn, 'name': new_name, 'dob': new_dob, 'sem': new_sem, 'g1': new_g1, 
-                             'g2': new_g2, 'absences': new_abs, 'failures': new_fail, 'study_time': p_study, 
-                             'health': p_health, 'famrel': p_fam, 'goout': p_goout, 'freetime': p_free}
-                     if add_new_student(data): st.success("Student added successfully.")
+                     conv_g1 = raw_g1 / 5
+                     conv_g2 = raw_g2 / 5
+                     # Convert Date to String
+                     dob_save = new_dob_date.strftime('%Y-%m-%d')
+                     
+                     data = {'usn': new_usn, 'name': new_name, 'dob': dob_save, 'sem': new_sem, 
+                             'g1': conv_g1, 'g2': conv_g2, 'absences': new_abs, 'failures': new_fail, 
+                             'study_time': p_study, 'health': p_health, 'famrel': p_fam, 'goout': p_goout, 'freetime': p_free}
+                     
+                     if add_new_student(data): st.success(f"Student added! (Saved DOB: {dob_save})")
                      else: st.error("Error: USN already exists.")
 
-    # --- TAB 2: MANAGE RECORDS (EDIT/DELETE) ---
     with tab2:
-        st.markdown("### 🗂️ Student Records")
+        st.markdown("### 📊 Class Analytics")
         all_students = get_all_students()
+        
+        if not all_students.empty:
+            avg_g1 = all_students['internal1'].mean() * 5 
+            avg_g2 = all_students['internal2'].mean() * 5
+            k1, k2, k3 = st.columns(3)
+            k1.metric("Class Strength", len(all_students))
+            k2.metric("Avg Internal 1", f"{avg_g1:.1f}%")
+            k3.metric("Avg Internal 2", f"{avg_g2:.1f}%")
+            
+            fig = go.Figure(data=[
+                go.Bar(name='Internal 1', x=all_students['name'], y=all_students['internal1']*5),
+                go.Bar(name='Internal 2', x=all_students['name'], y=all_students['internal2']*5)
+            ])
+            fig.update_layout(barmode='group', title="Class Performance Overview", height=300)
+            st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("---")
+        st.markdown("### 🗂️ Database Management")
         st.dataframe(all_students, use_container_width=True)
         
-        st.markdown("---")
-        st.subheader("🛠️ Manage Records")
-        
-        # Select Student to Edit/Delete
         student_list = all_students['usn'].tolist()
         selected_usn = st.selectbox("Select Student to Edit/Delete", options=["Select..."] + student_list)
         
@@ -427,14 +352,23 @@ elif st.session_state['user_role'] == "ADMIN":
                 with col_edit:
                     with st.form("edit_form"):
                         st.markdown(f"**Editing: {s_data['name']} ({selected_usn})**")
-                        
                         ec1, ec2 = st.columns(2)
                         with ec1:
                             e_name = st.text_input("Name", s_data['name'])
-                            e_dob = st.text_input("DOB", s_data['dob'])
+                            
+                            # --- DATE PICKER UI (Pre-fill with existing date) ---
+                            try:
+                                default_date = datetime.strptime(s_data['dob'], '%Y-%m-%d').date()
+                            except:
+                                default_date = date(2000, 1, 1)
+                            
+                            e_dob_date = st.date_input("DOB", value=default_date)
+                            
                             e_sem = st.number_input("Semester", 1, 8, int(s_data['sem']))
-                            e_g1 = st.number_input("Internal 1", 0, 20, int(s_data['internal1']))
-                            e_g2 = st.number_input("Internal 2", 0, 20, int(s_data['internal2']))
+                            current_g1_pct = float(s_data['internal1']) * 5
+                            current_g2_pct = float(s_data['internal2']) * 5
+                            edit_raw_g1 = st.number_input("Internal 1 (%)", 0.0, 100.0, current_g1_pct)
+                            edit_raw_g2 = st.number_input("Internal 2 (%)", 0.0, 100.0, current_g2_pct)
                         
                         with ec2:
                             e_abs = st.number_input("Absences", 0, 100, int(s_data['absences']))
@@ -446,100 +380,194 @@ elif st.session_state['user_role'] == "ADMIN":
                             e_free = st.slider("Free Time", 1, 5, int(s_data['freetime']))
 
                         if st.form_submit_button("💾 Update Details"):
+                             upd_g1 = edit_raw_g1 / 5
+                             upd_g2 = edit_raw_g2 / 5
+                             e_dob_save = e_dob_date.strftime('%Y-%m-%d')
+                             
                              upd_data = {
-                                 'usn': selected_usn, 'name': e_name, 'dob': e_dob, 'sem': e_sem,
-                                 'g1': e_g1, 'g2': e_g2, 'absences': e_abs, 'failures': e_fail,
+                                 'usn': selected_usn, 'name': e_name, 'dob': e_dob_save, 'sem': e_sem,
+                                 'g1': upd_g1, 'g2': upd_g2, 'absences': e_abs, 'failures': e_fail,
                                  'study_time': e_study, 'health': e_health, 'famrel': e_fam,
                                  'goout': e_goout, 'freetime': e_free
                              }
                              if update_student(upd_data):
                                  st.success("✅ Student updated successfully!")
                                  st.rerun()
-                             else:
-                                 st.error("❌ Update failed.")
+                             else: st.error("❌ Update failed.")
 
                 with col_delete:
-                    st.markdown("### ⚠️ Danger Zone")
                     st.warning("Deleting a record is permanent.")
                     if st.button("🗑️ DELETE STUDENT", type="primary"):
                         if delete_student(selected_usn):
                             st.success(f"Student {selected_usn} deleted.")
                             st.rerun()
-                        else:
-                            st.error("Delete failed.")
-
+                        else: st.error("Delete failed.")
 # ==========================================
-# 3. STUDENT DASHBOARD
+# 3. STUDENT DASHBOARD (ENHANCED SIDEBAR)
 # ==========================================
 elif st.session_state['user_role'] == "STUDENT":
     s = st.session_state['user_data']
     
     with st.sidebar:
-        st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=80)
+        # --- ENHANCED PROFILE SECTION ---
+        st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=100)
         st.title(s['name'])
-        st.caption(f"ID: {s['usn'][0]}")
+        st.markdown(f"**{s['usn'][0]}**")
+        
         st.markdown("---")
-        st.button("Logout", on_click=lambda: st.session_state.update({'user_role': None}))
+        st.markdown("### 👤 Profile Details")
+        
+        # Display extra details from the database
+        st.markdown(f"**📚 Semester:** {s['sem']}")
+        st.markdown(f"**🎂 DOB:** {s['dob']}")
+        
+        # Static "Status" badge to make it look official
+        st.success("✅ Status: Active Student")
+        
+        st.markdown("---")
+        
+        # LOGOUT WITH SESSION CLEAR (The Fix from before)
+        def logout():
+            st.session_state.clear()
+            st.rerun()
+        st.button("Logout", on_click=logout, type="secondary")
 
-    # --- METRICS ROW ---
+    # --- TOP METRICS (Standard) ---
     st.subheader("Overview")
-    m1, m2, m3, m4 = st.columns(4)
-    def metric_card(label, value):
-        return f"""<div class="metric-card"><div class="metric-value">{value}</div><div class="metric-label">{label}</div></div>"""
+    col_metrics, col_chart = st.columns([1, 1.5])
     
-    m1.markdown(metric_card("Internal 1", s['internal1']), unsafe_allow_html=True)
-    m2.markdown(metric_card("Internal 2", s['internal2']), unsafe_allow_html=True)
-    m3.markdown(metric_card("Absences", s['absences']), unsafe_allow_html=True)
-    m4.markdown(metric_card("Failures", s['failures']), unsafe_allow_html=True)
+    with col_metrics:
+        m1, m2 = st.columns(2)
+        m3, m4 = st.columns(2)
+        def metric_card(label, value):
+            return f"""<div class="metric-card" style="padding:15px; margin-bottom:10px;">
+                       <div class="metric-value">{value}</div>
+                       <div class="metric-label">{label}</div></div>"""
+        
+        # Display Internals as Percentage (Score * 5)
+        m1.markdown(metric_card("Internal 1", f"{s['internal1']*5:.0f}%"), unsafe_allow_html=True)
+        m2.markdown(metric_card("Internal 2", f"{s['internal2']*5:.0f}%"), unsafe_allow_html=True)
+        m3.markdown(metric_card("Absences", s['absences']), unsafe_allow_html=True)
+        m4.markdown(metric_card("Failures", s['failures']), unsafe_allow_html=True)
+
+    with col_chart:
+        # Comparative Chart
+        all_students = get_all_students()
+        avg_g1 = all_students['internal1'].mean() * 5
+        avg_g2 = all_students['internal2'].mean() * 5
+        my_g1 = s['internal1'] * 5
+        my_g2 = s['internal2'] * 5
+        
+        fig = go.Figure(data=[
+            go.Bar(name='My Score (%)', x=['Internal 1', 'Internal 2'], y=[my_g1, my_g2], marker_color='#6366f1'), 
+            go.Bar(name='Class Avg (%)', x=['Internal 1', 'Internal 2'], y=[avg_g1, avg_g2], marker_color='#94a3b8')
+        ])
+        fig.update_layout(
+            barmode='group', title="My Performance vs. Class Average", 
+            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+            font=dict(color='white'), height=280, margin=dict(l=20, r=20, t=40, b=20)
+        )
+        st.plotly_chart(fig, use_container_width=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
-
-    # --- MAIN FEATURES TABS ---
     tab_pred, tab_sim, tab_plan = st.tabs(["AI Prediction", "Simulator", "Study Plan"])
     
-    # --- TAB 1: AI PREDICTION ---
+    # --- TAB 1: AI PREDICTION (INDIAN STYLE) ---
     with tab_pred:
-        c1, c2 = st.columns([1, 1])
-        with c1:
-            st.markdown("### Performance Forecast")
-            if st.button("Analyze Performance", type="primary"):
-                with st.spinner("Analyzing..."):
-                    score, factors = run_prediction(s)
-                    advice = generate_report(s['name'], score, factors)
-                    
-                    # SAVE PREDICTION TO SESSION STATE
-                    st.session_state['pred_result'] = {
-                        'score': score,
-                        'factors': factors,
-                        'advice': advice
-                    }
+        if st.session_state['pred_result']:
+            res = st.session_state['pred_result']
+            raw_score = res['score'] # 0-20 scale
+            
+            # --- CONVERSION LOGIC ---
+            final_pct = (raw_score / 20) * 100
+            final_cgpa = raw_score / 2
+            
+            color_class = "pred-good" if final_pct > 70 else "pred-bad"
+            status_text = "Distinction" if final_pct > 75 else ("First Class" if final_pct > 60 else "Risk")
+            forecast_color = '#34d399' if final_pct > 70 else '#f87171'
 
-            # DISPLAY SAVED PREDICTION
-            if st.session_state['pred_result']:
-                res = st.session_state['pred_result']
-                score = res['score']
-                
-                pct = (score/20)*100
-                color_class = "pred-good" if pct > 70 else "pred-bad"
-                status_text = "On Track" if pct > 70 else "At Risk"
-                
+            c1, c2 = st.columns([1.5, 1])
+            with c1:
                 st.markdown(f"""
                 <div class="pred-box">
-                    <h1 class="{color_class}" style="font-size:4rem; margin:0;">{score:.2f}</h1>
-                    <div style="color:#94a3b8; font-size:1.2rem; font-weight:600;">{status_text} ({pct:.1f}%)</div>
+                    <h1 class="{color_class}" style="font-size:4rem; margin:0;">{final_pct:.1f}%</h1>
+                    <div style="color:#94a3b8; font-size:1.4rem; font-weight:600;">{final_cgpa:.2f} CGPA | {status_text}</div>
                 </div>
                 """, unsafe_allow_html=True)
                 
+                st.markdown("#### 📈 Academic Trajectory")
+                y_past = [s['internal1']*5, s['internal2']*5]
+                y_future = [s['internal2']*5, final_pct]
+                x_past = ["Internal 1", "Internal 2"]
+                x_future = ["Internal 2", "Final (Predicted)"]
+                
+                fig_trend = go.Figure()
+                fig_trend.add_trace(go.Scatter(x=x_past, y=y_past, mode='lines+markers', name='History', line=dict(color='#6366f1', width=3), marker=dict(size=8)))
+                fig_trend.add_trace(go.Scatter(x=x_future, y=y_future, mode='lines+markers', name='Forecast', line=dict(color=forecast_color, width=3, dash='dot'), marker=dict(size=8, symbol='star')))
+                fig_trend.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#e2e8f0'), height=300, margin=dict(l=20, r=20, t=20, b=20), showlegend=True, yaxis=dict(range=[0, 100], title="Percentage (%)", gridcolor='#334155'), xaxis=dict(showgrid=False))
+                st.plotly_chart(fig_trend, use_container_width=True)
+
+            with c2:
                 with st.container(border=True):
-                    st.markdown("**📌 AI Insights**")
+                    st.markdown("### 🤖 AI Counselor")
+                    st.info("Based on your pattern, here is my assessment:")
                     st.write(res['advice'])
-        with c2:
-             st.info("Our AI model evaluates your academic history and lifestyle choices to predict your end-semester grade with 83% accuracy.")
+                    st.markdown("---")
+                    
+                    report_text = f"""
+                    UNIVERSITY STUDENT REPORT
+                    ----------------------------------
+                    Name: {s['name']} (USN: {s['usn']})
+                    
+                    ACADEMIC PERFORMANCE:
+                    - Internal 1: {s['internal1']*5:.1f}%
+                    - Internal 2: {s['internal2']*5:.1f}%
+                    
+                    AI FORECAST:
+                    - Predicted Percentage: {final_pct:.2f}%
+                    - Predicted CGPA:       {final_cgpa:.2f}
+                    - Status:               {status_text}
+                    
+                    COUNSELOR ADVICE:
+                    {res['advice']}
+                    ----------------------------------
+                    Generated by Uni. AI Portal
+                    """
+                    st.download_button(label="📄 Download Report", data=report_text, file_name=f"{s['name']}_Report.txt", mime="text/plain", type="primary", use_container_width=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔄 Start New Analysis", use_container_width=True):
+                st.session_state['pred_result'] = None
+                st.rerun()
+
+        else:
+            col_hero_text, col_hero_img = st.columns([1.5, 1])
+            with col_hero_text:
+                st.markdown(f"""<div style="padding-top: 10px;"><h2 style="font-size: 2.2rem; margin-bottom: 10px; color: #f8fafc;">Ready to Forecast, {s['name']}?</h2><p style="color: #cbd5e1; font-size: 1.1rem; line-height: 1.6;">Our Hybrid AI is ready to analyze your academic profile. We will evaluate <b>33 data points</b> to predict your final CGPA/Percentage.</p></div>""", unsafe_allow_html=True)
+                st.markdown("<br>", unsafe_allow_html=True)
+                k1, k2, k3 = st.columns(3)
+                def status_badge(title, status, icon, color):
+                    return f"""<div style="background-color: #1e293b; padding: 15px; border-radius: 10px; border: 1px solid #334155; text-align: center;"><div style="font-size: 24px; margin-bottom: 5px;">{icon}</div><div style="font-weight: 600; color: #f8fafc; font-size: 14px;">{title}</div><div style="color: {color}; font-size: 12px; font-weight: bold; margin-top: 5px;">{status}</div></div>"""
+                k1.markdown(status_badge("Academics", "DATA FOUND", "📚", "#34d399"), unsafe_allow_html=True)
+                k2.markdown(status_badge("Attendance", "LOGGED", "📅", "#60a5fa"), unsafe_allow_html=True)
+                k3.markdown(status_badge("Lifestyle", "CONNECTED", "🧘", "#a78bfa"), unsafe_allow_html=True)
+                st.markdown("<br><br>", unsafe_allow_html=True)
+                if st.button("🚀 Launch AI Analysis", type="primary", use_container_width=True):
+                    with st.spinner("🔄 Crunching numbers & generating insights..."):
+                        score, factors = run_prediction(s)
+                        advice = generate_report(s['name'], score, factors)
+                        st.session_state['pred_result'] = {'score': score, 'factors': factors, 'advice': advice}
+                        st.rerun()
+
+            with col_hero_img:
+                lottie_url = "https://assets8.lottiefiles.com/packages/lf20_qp1q7mct.json" 
+                animation = load_lottieurl(lottie_url)
+                if animation: st_lottie(animation, height=350, key="analysis_anim")
 
     # --- TAB 2: SIMULATOR ---
     with tab_sim:
         st.markdown("### What-If Analysis")
-        st.caption("Adjust sliders to see the impact on your grade.")
+        st.caption("Adjust sliders to see the impact on your final grade.")
         c1, c2 = st.columns(2)
         with c1:
             sim_study = st.slider("Study Time (1=Low, 4=High)", 1, 4, int(s['study_time']))
@@ -547,7 +575,6 @@ elif st.session_state['user_role'] == "STUDENT":
         with c2:
             sim_goout = st.slider("Partying / Going Out", 1, 5, int(s['goout']))
             sim_health = st.slider("Health Status", 1, 5, int(s['health']))
-            
         sim_profile = s.copy()
         sim_profile['study_time'] = sim_study; sim_profile['absences'] = sim_abs
         sim_profile['goout'] = sim_goout; sim_profile['health'] = sim_health
@@ -555,17 +582,30 @@ elif st.session_state['user_role'] == "STUDENT":
         base_score, _ = run_prediction(s)
         new_score, _ = run_prediction(sim_profile)
         
-        st.metric("Projected Grade", f"{new_score:.2f} / 20", delta=f"{new_score-base_score:.2f}")
+        base_pct = (base_score/20)*100
+        new_pct = (new_score/20)*100
+        diff = new_pct - base_pct
+        
+        st.metric("Projected Percentage", f"{new_pct:.2f}%", delta=f"{diff:.2f}%")
 
-    # --- TAB 3: STUDY PLAN (NOW PERSISTENT) ---
+    # --- TAB 3: STUDY PLAN ---
     with tab_plan:
-        st.markdown("### Smart Study Planner")
+        c_head, c_btn = st.columns([3, 1])
+        with c_head:
+            st.markdown("### Smart Study Planner")
+        
         if st.button("Generate Schedule"):
             with st.spinner("Generating..."):
                 plan = generate_timetable(s)
-                # SAVE STUDY PLAN TO SESSION STATE
                 st.session_state['study_plan'] = plan
         
-        # DISPLAY SAVED STUDY PLAN
         if st.session_state['study_plan']:
             st.markdown(st.session_state['study_plan'])
+            st.download_button(
+                label="📥 Download Study Plan",
+                data=st.session_state['study_plan'],
+                file_name=f"{s['name']}_Study_Plan.md",
+                mime="text/markdown",
+                type="secondary"
+            )
+            

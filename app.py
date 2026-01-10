@@ -15,7 +15,7 @@ st.set_page_config(page_title="Uni. AI Portal", layout="wide", page_icon="🎓")
 # Configure Gemini API
 # IMPORTANT: Replace with your actual key or use st.secrets
 try:
-    genai.configure(api_key="Key_Goes_Here") 
+    genai.configure(api_key="key_goes_here") 
 except Exception as e:
     st.error(f"API Configuration Error: {e}")
 
